@@ -1,5 +1,6 @@
 import itertools
 from dataclasses import dataclass
+from functools import reduce
 from pathlib import Path
 from typing import Generator
 
@@ -71,8 +72,33 @@ class Evolution:
     def __len__(self) -> int:
         return len(self.sequence)
 
+    def __next__(self):
+        return self.sequence
+
     def __str__(self) -> str:
         return f"Evolution: {self.solved}:{len(self.mutations)}\n{str(self.mutations)}"
+
+
+class EvolutionIterator:
+    def __init__(self, evolution: Evolution, mutation_iters: list[MutationIterator]) -> None:
+        self.evolution = evolution
+        self.mutation_iters = mutation_iters
+        self.evolution_iter = None  # itertools.product(*self.mutation_iters)
+
+    def __call__(self, mutation_iter: MutationIterator) -> "EvolutionIterator":
+        return EvolutionIterator(self.evolution, [*self.mutation_iters, mutation_iter])
+
+    def __iter__(self) -> "EvolutionIterator":
+        self.evolution_iter = itertools.product(*self.mutation_iters)
+        return self
+
+    def __next__(self) -> Evolution:
+        # TODO: add evolution sequence to be iterator.
+        for mutations in self.evolution_iter:
+            if any(map(lambda mut: self.evolution | mut, mutations)):
+                continue
+            return reduce(lambda ev, mut: ev + mut, mutations, self.evolution)
+        raise StopIteration
 
 
 def inversion_mutations(input_file: Path, output_file: Path) -> None:
@@ -87,7 +113,6 @@ def inversion_mutations(input_file: Path, output_file: Path) -> None:
 
     data = ""
     for sequence in sequences:
-        # solution = find_evolutions([Evolution(sequence, MutationList([]))])
         print(f"Sequence: {sequence}")
         mutation_iterator = MutationIterator(len(sequence))
         solution = find_evolution_fast(
@@ -99,7 +124,7 @@ def inversion_mutations(input_file: Path, output_file: Path) -> None:
         f.write(data)
 
 
-def find_evolutions(evolutions: list[Evolution]) -> Evolution:
+def find_evolution(evolutions: list[Evolution], *_) -> Evolution:
     # list all possible mutations.
     mutations = find_mutations(len(evolutions[0]))
 
@@ -113,7 +138,7 @@ def find_evolutions(evolutions: list[Evolution]) -> Evolution:
         return solutions[0]
 
     # recurse to find the best solution
-    return find_evolutions(evolutions)
+    return find_evolution(evolutions)
 
 
 def find_evolution_fast(
@@ -127,6 +152,27 @@ def find_evolution_fast(
         evaluated_evolutions.append(evolution)
 
     return find_evolution_fast(evaluated_evolutions, mutation_iterator)
+
+
+def find_evolution_lean(
+        evolution_iter: EvolutionIterator,
+        mutation_iter: MutationIterator
+) -> Evolution:
+    """
+    a recursive function to find the best solution for the given evolution.
+
+    it accepts an evolution (a sequence of integers) and a mutation iterator list to apply on the
+    sequence.
+
+    when it does not find a solution, it will call itself with a double mutation iterator.
+
+    """
+    for evolution in evolution_iter:
+        if evolution.solved:
+            return evolution
+
+    return find_evolution_lean(evolution_iter(mutation_iter),
+                               mutation_iter)
 
 
 def evolution_iterator(

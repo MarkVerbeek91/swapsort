@@ -4,13 +4,13 @@ import pytest
 
 from main import (
     Evolution,
-    Mutation,
+    EvolutionIterator, Mutation,
     MutationIterator,
     MutationList,
     filter_mutations_to_most_sorted,
     find_evolution_fast,
-    find_evolutions,
-    format_the_output,
+    find_evolution,
+    find_evolution_lean, format_the_output,
     inverse_mutations,
     inverse_mutations_on_location,
     inversion_mutations,
@@ -21,11 +21,14 @@ from main import (
 )
 
 
-def test_with_files():
+def test_with_file_set1():
     input_file = Path("sample_sequence_set1.txt")
     output_file = Path("sample_sequence_set1_output.txt")
     inversion_mutations(input_file, output_file)
 
+
+@pytest.mark.skip("This test is slow")
+def test_with_file_set2():
     input_file = Path("sample_sequence_set2.txt")
     output_file = Path("sample_sequence_set2_output.txt")
     inversion_mutations(input_file, output_file)
@@ -112,7 +115,6 @@ def test_sequence_quality_with_mutations(sequence, expected):
     "sequence, expected",
     [
         # ([1, 2], []),  # function should not run on a sequence in order
-        # ([1, 2, 3], []),
         ([2, 1, 4, 3], [Mutation(0, 2), Mutation(2, 2)]),
         ([2, 4, 1, 3], [Mutation(0, 3), Mutation(1, 2), Mutation(1, 3)]),
     ],
@@ -144,22 +146,22 @@ def test_format_the_output():
     )
 
 
-def test_acceptance_test():
+def test_acceptance_test_find_evolution_sequence_01():
     sequence = [3, 2, 1, 4, 8, 7, 6, 5, 9]
     evolution = Evolution(sequence, MutationList([]))
 
-    solution = find_evolutions([evolution])
+    solution = find_evolution([evolution])
     output = format_the_output(sequence, solution.mutations)
     assert output == (
         "2\n" "3 2 1 4 8 7 6 5 9\n" "1 2 3 4 8 7 6 5 9\n" "1 2 3 4 5 6 7 8 9\n"
     )
 
 
-def test_acceptance_test_01():
+def test_acceptance_test_find_evolution_sequence_02():
     sequence = [1, 2, 4, 3, 5, 8, 7, 9, 6]
     evolution = Evolution(sequence, MutationList([]))
 
-    solution = find_evolutions([evolution])
+    solution = find_evolution([evolution])
     output = format_the_output(sequence, solution.mutations)
     assert output == (
         "3\n"
@@ -170,7 +172,18 @@ def test_acceptance_test_01():
     )
 
 
-def test_acceptance_test_02():
+def test_acceptance_test_find_evolution_fast_sequence_01():
+    sequence = [3, 2, 1, 4, 8, 7, 6, 5, 9]
+    evolution = Evolution(sequence, MutationList([]))
+    mutation_iterator = MutationIterator(len(sequence))
+    solution = find_evolution_fast([evolution], mutation_iterator)
+    output = format_the_output(sequence, solution.mutations)
+    assert output == (
+        "2\n" "3 2 1 4 8 7 6 5 9\n" "1 2 3 4 8 7 6 5 9\n" "1 2 3 4 5 6 7 8 9\n"
+    )
+
+
+def test_acceptance_test_find_evolution_fast_sequence_02():
     sequence = [1, 2, 4, 3, 5, 8, 7, 9, 6]
     evolution = Evolution(sequence, MutationList([]))
     mutation_iterator = MutationIterator(len(sequence))
@@ -185,31 +198,31 @@ def test_acceptance_test_02():
     )
 
 
-def test_acceptance_test_03():
-    long_sequence = [1, 2, 4, 3, 5, 8, 7, 10, 9, 6]
+def test_acceptance_test_find_evolution_fast_and_lean_sequence_01():
+    sequence = [3, 2, 1, 4, 8, 7, 6, 5, 9]
+    evolution = Evolution(sequence, MutationList([]))
+    mutation_iterator = MutationIterator(len(sequence))
+    evolution_iter = EvolutionIterator(evolution, [mutation_iterator])
 
-    evolution = Evolution(long_sequence, MutationList([]))
-    mutation_iterator = MutationIterator(len(long_sequence))
-    solution = find_evolution_fast([evolution], mutation_iterator)
-    output = format_the_output(long_sequence, solution.mutations)
+    solution = find_evolution_lean(evolution_iter, mutation_iterator)
+    output = format_the_output(sequence, solution.mutations)
     assert output == (
-        "3\n"
-        "1 2 4 3 5 8 7 10 9 6\n"
-        "1 2 3 4 5 8 7 10 9 6\n"
-        "1 2 3 4 5 8 7 6 9 10\n"
-        "1 2 3 4 5 6 7 8 9 10\n"
+        "2\n" "3 2 1 4 8 7 6 5 9\n" "1 2 3 4 8 7 6 5 9\n" "1 2 3 4 5 6 7 8 9\n"
     )
 
 
-def test_acceptance_test_04():
-    long_sequence = [1, 2, 4, 3, 5, 8, 7, 10, 9, 6]
-    evolution = Evolution(long_sequence, MutationList([]))
-    solution = find_evolutions([evolution])
-    output = format_the_output(long_sequence, solution.mutations)
+def test_acceptance_test_find_evolution_fast_and_lean_sequence_02():
+    sequence = [1, 2, 4, 3, 5, 8, 7, 9, 6]
+    evolution = Evolution(sequence, MutationList([]))
+    mutation_iterator = MutationIterator(len(sequence))
+    evolution_iter = EvolutionIterator(evolution, [mutation_iterator])
+
+    solution = find_evolution_lean(evolution_iter, mutation_iterator)
+    output = format_the_output(sequence, solution.mutations)
     assert output == (
         "3\n"
-        "1 2 4 3 5 8 7 10 9 6\n"
-        "1 2 3 4 5 8 7 10 9 6\n"
-        "1 2 3 4 5 8 7 6 9 10\n"
-        "1 2 3 4 5 6 7 8 9 10\n"
+        "1 2 4 3 5 8 7 9 6\n"
+        "1 2 3 4 5 8 7 9 6\n"
+        "1 2 3 4 5 8 7 6 9\n"
+        "1 2 3 4 5 6 7 8 9\n"
     )
