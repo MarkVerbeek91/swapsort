@@ -4,13 +4,15 @@ import pytest
 
 from main import (
     Evolution,
-    EvolutionIterator, Mutation,
+    EvolutionIterator,
+    Mutation,
     MutationIterator,
     MutationList,
     filter_mutations_to_most_sorted,
     find_evolution_fast,
     find_evolution,
-    find_evolution_lean, format_the_output,
+    find_evolution_lean,
+    format_the_output,
     inverse_mutations,
     inverse_mutations_on_location,
     inversion_mutations,
