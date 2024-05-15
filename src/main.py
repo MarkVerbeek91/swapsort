@@ -2,7 +2,7 @@ import itertools
 from dataclasses import dataclass
 from functools import reduce
 from pathlib import Path
-from typing import Generator
+from typing import Iterator, Self
 
 
 @dataclass
@@ -25,7 +25,7 @@ class Mutation:
 class MutationList:
     mutations: list[Mutation]
 
-    def __add__(self, other: Mutation) -> "MutationList":
+    def __add__(self, other: Mutation) -> Self:
         return MutationList([*self.mutations, other])
 
     def __len__(self) -> int:
@@ -43,7 +43,7 @@ class MutationIterator:
         self.mutations = find_mutations(length)
         self._index = 0
 
-    def __iter__(self) -> "MutationIterator":
+    def __iter__(self) -> Self:
         self._index = 0
         return self
 
@@ -65,7 +65,7 @@ class Evolution:
     def __or__(self, other: Mutation) -> bool:
         return other in self.mutations or not is_mutation_needed(self.sequence, other)
 
-    def __add__(self, other: Mutation) -> "Evolution":
+    def __add__(self, other: Mutation) -> Self:
         sequence = inverse_mutations_on_location(self.sequence, other)
         return Evolution(sequence, self.mutations + other)
 
@@ -80,20 +80,21 @@ class Evolution:
 
 
 class EvolutionIterator:
-    def __init__(self, evolution: Evolution, mutation_iters: list[MutationIterator]) -> None:
+    def __init__(
+        self, evolution: Evolution, mutation_iters: list[MutationIterator]
+    ) -> None:
         self.evolution = evolution
         self.mutation_iters = mutation_iters
         self.evolution_iter = None  # itertools.product(*self.mutation_iters)
 
-    def __call__(self, mutation_iter: MutationIterator) -> "EvolutionIterator":
+    def __call__(self, mutation_iter: MutationIterator) -> Self:
         return EvolutionIterator(self.evolution, [*self.mutation_iters, mutation_iter])
 
-    def __iter__(self) -> "EvolutionIterator":
+    def __iter__(self) -> Self:
         self.evolution_iter = itertools.product(*self.mutation_iters)
         return self
 
     def __next__(self) -> Evolution:
-        # TODO: add evolution sequence to be iterator.
         for mutations in self.evolution_iter:
             if any(map(lambda mut: self.evolution | mut, mutations)):
                 continue
@@ -142,7 +143,7 @@ def find_evolution(evolutions: list[Evolution], *_) -> Evolution:
 
 
 def find_evolution_fast(
-        evolutions: list[Evolution], mutation_iterator: MutationIterator
+    evolutions: list[Evolution], mutation_iterator: MutationIterator
 ) -> Evolution:
     evaluated_evolutions: list[Evolution] = []
 
@@ -155,8 +156,7 @@ def find_evolution_fast(
 
 
 def find_evolution_lean(
-        evolution_iter: EvolutionIterator,
-        mutation_iter: MutationIterator
+    evolution_iter: EvolutionIterator, mutation_iter: MutationIterator
 ) -> Evolution:
     """
     a recursive function to find the best solution for the given evolution.
@@ -171,13 +171,12 @@ def find_evolution_lean(
         if evolution.solved:
             return evolution
 
-    return find_evolution_lean(evolution_iter(mutation_iter),
-                               mutation_iter)
+    return find_evolution_lean(evolution_iter(mutation_iter), mutation_iter)
 
 
 def evolution_iterator(
-        evolutions: list[Evolution], mutations: MutationIterator
-) -> Generator[Evolution, None, None]:
+    evolutions: list[Evolution], mutations: MutationIterator
+) -> Iterator[Evolution]:
     yield from iter(ev + mu for ev in evolutions for mu in mutations if not ev | mu)
 
 
@@ -190,7 +189,7 @@ def find_mutations(length: int) -> list[Mutation]:
 
 
 def filter_mutations_to_most_sorted(
-        evolution: Evolution, mutations: list[Mutation]
+    evolution: Evolution, mutations: list[Mutation]
 ) -> list[Mutation]:
     mutation_sequences = list(
         map(
@@ -222,12 +221,12 @@ def is_solved(sequence: list[int]) -> bool:
 
 
 def is_mutation_needed(sequence: list[int], mut: Mutation) -> bool:
-    return not is_solved(sequence[mut.start: mut.end])
+    return not is_solved(sequence[mut.start : mut.end])
 
 
 def sequence_quality(seq: list[int]) -> int:
     return sum(
-        [1 for i, x in enumerate(seq) for j, y in enumerate(seq[i + 1:]) if x > y]
+        [1 for i, x in enumerate(seq) for j, y in enumerate(seq[i + 1 :]) if x > y]
     )
 
 
