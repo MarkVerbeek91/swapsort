@@ -29,7 +29,6 @@ def test_with_file_set1():
     inversion_mutations(input_file, output_file)
 
 
-@pytest.mark.skip("This test is slow")
 def test_with_file_set2():
     input_file = Path("sample_sequence_set2.txt")
     output_file = Path("sample_sequence_set2_output.txt")

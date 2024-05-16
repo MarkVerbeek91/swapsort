@@ -18,7 +18,7 @@ class Mutation:
         return self.start == other.start and self.length == other.length
 
     def __str__(self) -> str:
-        return f"Mutation: {self.start} {self.end}"
+        return f"Mutation: {self.start}-{self.end}"
 
 
 @dataclass
@@ -40,20 +40,28 @@ class MutationList:
 
 class MutationIterator:
     def __init__(self, length: int) -> None:
-        self.mutations = find_mutations(length)
+        self.length = length
+        self.mutation_iter = None
         self._index = 0
 
     def __iter__(self) -> Self:
-        self._index = 0
+        self.mutation_iter = self.gen_mutations()
         return self
 
     def __next__(self) -> Mutation:
-        try:
-            result = self.mutations[self._index]
-        except IndexError:
-            raise StopIteration
-        self._index += 1
-        return result
+        for mutation in self.mutation_iter:
+            return mutation
+        raise StopIteration
+
+    def gen_mutations(self) -> Iterator[Mutation]:
+        mutation_options = itertools.product(
+            range(self.length), range(2, self.length + 1)
+        )
+        mutation_filtered = filter(
+            lambda x: x[0] + x[1] <= self.length, mutation_options
+        )
+        mutation_iter = map(lambda x: Mutation(x[0], x[1]), mutation_filtered)
+        return mutation_iter
 
 
 class Evolution:
@@ -85,7 +93,7 @@ class EvolutionIterator:
     ) -> None:
         self.evolution = evolution
         self.mutation_iters = mutation_iters
-        self.evolution_iter = None  # itertools.product(*self.mutation_iters)
+        self.evolution_iter = None
 
     def __call__(self, mutation_iter: MutationIterator) -> Self:
         return EvolutionIterator(self.evolution, [*self.mutation_iters, mutation_iter])
@@ -114,11 +122,13 @@ def inversion_mutations(input_file: Path, output_file: Path) -> None:
 
     data = ""
     for sequence in sequences:
+        if not sequence:
+            continue
+
         print(f"Sequence: {sequence}")
         mutation_iterator = MutationIterator(len(sequence))
-        solution = find_evolution_fast(
-            [Evolution(sequence, MutationList([]))], mutation_iterator
-        )
+        evolution = Evolution(sequence, MutationList([]))
+        solution = find_evolution_fast([evolution], mutation_iterator)
         data += format_the_output(sequence, solution.mutations)
 
     with open(output_file, "w") as f:
